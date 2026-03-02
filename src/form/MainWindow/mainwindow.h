@@ -1,17 +1,21 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
+#include <QDialog>
 #include <QGraphicsScene>
 #include <QMainWindow>
 #include <QStandardItem>
+#include "MyGraphicsView/mygraphicsview.h"
 
 class EnviReader;
+class SpectrumView;
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
 class MainWindow;
 }
 QT_END_NAMESPACE
+
 
 class MainWindow : public QMainWindow
 {
@@ -20,10 +24,7 @@ class MainWindow : public QMainWindow
 public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
-protected:
-    void mousePressEvent(QMouseEvent* event) override;
-    void mouseMoveEvent(QMouseEvent* event) override;
-    void mouseReleaseEvent(QMouseEvent* event) override;
+
 private slots:
     void on_actionFromFile_triggered();
     void on_actionFromFolder_triggered();
@@ -38,7 +39,8 @@ private slots:
 
 private:
     void init();
-
+private slots:
+    void showSpectrum(int x, int y);
 private:
     Ui::MainWindow *ui;
     QStandardItemModel* m_model = nullptr;
@@ -48,5 +50,6 @@ private:
     QPointF m_cropStart;
     QGraphicsRectItem* m_cropRect = nullptr;
     bool m_isCropping = false;
+    SpectrumView *m_spectrumView;
 };
 #endif // MAINWINDOW_H

@@ -1,14 +1,11 @@
 #include "mainwindow.h"
-#include "./ui_mainwindow.h"
-
-#include <QFile>
+#include "ui_mainwindow.h"
 #include <QFileDialog>
-#include <QVector>
-
-#include <QMouseEvent>
-#include <QGraphicsItem>
+#include <QFileInfo>
+#include <QImage>
+#include <QPixmap>
 #include "EnviReader/envireader.h"
-
+#include "spectrumview.h"
 
 EnviReader m_reader;
 
@@ -25,16 +22,22 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
-void MainWindow::init() {
+void MainWindow::init()
+{
+    m_spectrumView = new SpectrumView;
     m_model = new QStandardItemModel(this);
     m_scene = new QGraphicsScene(this);
 
     ui->treeViewItem->setModel(m_model);
+
     ui->graphicsView->setScene(m_scene);
     ui->graphicsView->setDragMode(QGraphicsView::ScrollHandDrag);
     ui->graphicsView->setTransformationAnchor(QGraphicsView::AnchorUnderMouse);
-    ui->graphicsView->setDragMode(QGraphicsView::ScrollHandDrag);
-       ui->graphicsView->viewport()->installEventFilter(this);
+
+    connect(ui->graphicsView,
+            &MyGraphicsView::pixelClicked,
+            this,
+            &MainWindow::showSpectrum);
 }
 
 void MainWindow::on_actionFromFile_triggered()
@@ -54,10 +57,7 @@ void MainWindow::on_actionFromFile_triggered()
     m_model->clear();
 
     QFileInfo info(hdrPath);
-
-    QStandardItem* rootItem =
-        new QStandardItem(info.fileName());
-
+    QStandardItem* rootItem = new QStandardItem(info.fileName());
     m_model->appendRow(rootItem);
 
     const auto& h = m_reader.header();
@@ -67,7 +67,7 @@ void MainWindow::on_actionFromFile_triggered()
         QStandardItem* bandItem =
             new QStandardItem(h.wavelength[i]);
 
-        bandItem->setData(i, Qt::UserRole);  // 保存 band index
+        bandItem->setData(i, Qt::UserRole);
         rootItem->appendRow(bandItem);
     }
 
@@ -81,44 +81,30 @@ void MainWindow::on_actionFromFolder_triggered()
 
 void MainWindow::on_treeViewItem_clicked(const QModelIndex &index)
 {
-    if (!index.parent().isValid()) {
-        ui->stackedWidget->setCurrentWidget(ui->pageInfo);
-        ui->textBrowserInfo->setText(m_reader.header().toString());
+    if (!index.parent().isValid())
         return;
-    }
-    ui->stackedWidget->setCurrentWidget(ui->pageGraphicsView);
 
     int band = index.data(Qt::UserRole).toInt();
 
     const auto& h = m_reader.header();
-
     int width = h.samples;
     int height = h.lines;
 
     QImage img(width, height, QImage::Format_Grayscale8);
 
-    // 找最大值用于归一化
     quint16 maxVal = 1;
 
     for (int y = 0; y < height; ++y)
-    {
         for (int x = 0; x < width; ++x)
-        {
-            quint16 v = m_reader.value(band, y, x);
-            if (v > maxVal)
-                maxVal = v;
-        }
-    }
+            maxVal = qMax(maxVal, m_reader.value(band, y, x));
 
-    // 生成8位灰度图
     for (int y = 0; y < height; ++y)
     {
         uchar* line = img.scanLine(y);
         for (int x = 0; x < width; ++x)
         {
             quint16 v = m_reader.value(band, y, x);
-            line[x] = static_cast<uchar>(
-                (double)v / maxVal * 255.0);
+            line[x] = static_cast<uchar>((double)v / maxVal * 255.0);
         }
     }
 
@@ -148,8 +134,7 @@ void MainWindow::on_tBtnZoomOut_clicked()
 
 void MainWindow::on_tBtnCrop_clicked()
 {
-    m_isCropping = true;
-    ui->graphicsView->setDragMode(QGraphicsView::NoDrag);
+    ui->graphicsView->setCropEnabled(true);
 }
 
 void MainWindow::on_tBtnPick_clicked()
@@ -157,64 +142,30 @@ void MainWindow::on_tBtnPick_clicked()
 
 }
 
-
-
-void MainWindow::mousePressEvent(QMouseEvent* event)
+void MainWindow::showSpectrum(int x, int y)
 {
-    if (!m_isCropping)
+    const auto& h = m_reader.header();
+
+    if (x < 0 || y < 0 ||
+        x >= h.samples ||
+        y >= h.lines)
         return;
 
-    m_cropStart =
-        ui->graphicsView->mapToScene(event->pos());
+    // 如果没有 wavelength，直接返回
+    if (h.wavelength.size() != h.bands)
+        return;
 
-    m_cropRect = m_scene->addRect(
-        QRectF(m_cropStart, QSizeF()),
-        QPen(QColor(0, 120, 255), 2),
-        QBrush(QColor(0, 120, 255, 80))   // 蓝色透明
-        );
-}
+    QList<QPointF> curve;
+    curve.reserve(h.bands);
 
-void MainWindow::mouseMoveEvent(QMouseEvent* event)
-{
-    if (!m_isCropping || !m_cropRect)
-        return QMainWindow::mouseMoveEvent(event);
-
-    QPointF current =
-        ui->graphicsView->mapToScene(event->pos());
-
-    QRectF rect(m_cropStart, current);
-    m_cropRect->setRect(rect.normalized());
-}
-
-void MainWindow::mouseReleaseEvent(QMouseEvent* event)
-{
-    if (!m_isCropping || !m_cropRect)
-        return QMainWindow::mouseReleaseEvent(event);
-
-    QRectF rect = m_cropRect->rect().normalized();
-
-    if (rect.width() > 10 && rect.height() > 10)
+    for (int b = 0; b < h.bands; ++b)
     {
-        // 计算缩放比例
-        double viewWidth  = ui->graphicsView->viewport()->width();
-        double viewHeight = ui->graphicsView->viewport()->height();
+        double wl = h.wavelength[b].toDouble();      // ENVI波长
+        double val = m_reader.value(b, y, x);
 
-        double scaleX = viewWidth  / rect.width();
-        double scaleY = viewHeight / rect.height();
-
-        double scaleFactor = qMin(scaleX, scaleY);
-
-        // 居中到选区中心
-        ui->graphicsView->centerOn(rect.center());
-
-        // 叠加缩放（不会重置）
-        ui->graphicsView->scale(scaleFactor, scaleFactor);
+        curve.append(QPointF(wl, val));
     }
 
-    m_scene->removeItem(m_cropRect);
-    delete m_cropRect;
-    m_cropRect = nullptr;
-
-    m_isCropping = false;
-    ui->graphicsView->setDragMode(QGraphicsView::ScrollHandDrag);
+    m_spectrumView->addSpectrum(curve);
+    m_spectrumView->show();
 }
