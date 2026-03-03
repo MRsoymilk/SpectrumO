@@ -13,9 +13,20 @@
   <property name="windowTitle">
    <string>SpectrumView</string>
   </property>
-  <layout class="QGridLayout" name="gridLayout_2">
+  <layout class="QGridLayout" name="gridLayout_2" rowstretch="1,0">
    <item row="0" column="0">
     <layout class="QGridLayout" name="gLayChart"/>
+   </item>
+   <item row="1" column="0">
+    <layout class="QHBoxLayout" name="hLayOperate">
+     <item>
+      <widget class="QToolButton" name="tBtnClear">
+       <property name="text">
+        <string>clear</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
    </item>
   </layout>
  </widget>

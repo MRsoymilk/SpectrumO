@@ -5,6 +5,7 @@
 
 #include <QtCharts/QChartView>
 #include <QtCharts/QLineSeries>
+#include "MyChartView/mychartview.h"
 
 namespace Ui {
 class SpectrumView;
@@ -19,13 +20,16 @@ public:
     ~SpectrumView();
     void addSpectrum(const QList<QPointF> &curve);
 
+private slots:
+    void on_tBtnClear_clicked();
+
 private:
     void init();
 
 private:
     Ui::SpectrumView *ui;
     QChart *m_chart;
-    QChartView *m_chartView;
+    MyChartView *m_chartView;
     void updateAxisRange(const QList<QPointF> &curve);
 };
 

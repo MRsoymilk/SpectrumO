@@ -17,17 +17,23 @@ set(PROJECT_SOURCES
         src/form/MainWindow/mainwindow.cpp
         src/form/MainWindow/mainwindow.h
         src/form/MainWindow/mainwindow.ui
+        src/form/SpectrumView/spectrumview.h
+        src/form/SpectrumView/spectrumview.cpp
+        src/form/SpectrumView/spectrumview.ui
         src/components/EnviReader/envireader.h
         src/components/EnviReader/envireader.cpp
         src/components/MyGraphicsView/mygraphicsview.h
         src/components/MyGraphicsView/mygraphicsview.cpp
+        src/components/MyChartView/mychartview.h
+        src/components/MyChartView/mychartview.cpp
+        src/components/DraggableLine/draggableline.h
+        src/components/DraggableLine/draggableline.cpp
 )
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
     qt_add_executable(SpectrumO
         MANUAL_FINALIZATION
         ${PROJECT_SOURCES}
-        src/form/SpectrumView/spectrumview.h src/form/SpectrumView/spectrumview.cpp src/form/SpectrumView/spectrumview.ui
     )
 # Define target properties for Android with Qt 6 as:
 #    set_property(TARGET SpectrumO APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR

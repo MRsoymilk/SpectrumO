@@ -22,7 +22,7 @@ void SpectrumView::init()
     m_chart = new QChart();
     m_chart->setTitle("Pixel Spectrum");
 
-    m_chartView = new QChartView(m_chart);
+    m_chartView = new MyChartView(m_chart, this);
     m_chartView->setRenderHint(QPainter::Antialiasing);
 
 
@@ -113,5 +113,14 @@ void SpectrumView::updateAxisRange(const QList<QPointF> &curve)
         axisY->setRange(qMin(axisY->min(), minY),
                         qMax(axisY->max(), maxY));
     }
+}
+
+
+void SpectrumView::on_tBtnClear_clicked()
+{
+    if (!m_chart)
+        return;
+
+    m_chart->removeAllSeries();
 }
 
